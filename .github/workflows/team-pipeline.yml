@@ -1,0 +1,138 @@
+name: team-pipeline
+
+# The whole "how does the pipeline know which team changed" answer lives in
+# the `detect` job: it diffs the PR/push against teams/**, extracts the
+# unique team directories touched, and fans out a plan (PR) or apply (push
+# to main) job per changed team via a matrix. A PR touching only
+# teams/team-gamma/ never plans or applies anyone else's directory - this is
+# what makes the pipeline scale to 300 teams without 300 workflow files.
+
+on:
+  pull_request:
+    paths:
+      - "teams/**"
+      - "modules/**"
+  push:
+    branches: [main]
+    paths:
+      - "teams/**"
+      - "modules/**"
+
+permissions:
+  id-token: write # for OIDC -> AWS, no long-lived secrets
+  contents: read
+  pull-requests: write # for the plan-comment step
+
+jobs:
+  detect-changed-teams:
+    runs-on: ubuntu-latest
+    outputs:
+      teams: ${{ steps.changed.outputs.teams }}
+      module_changed: ${{ steps.changed.outputs.module_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine changed team directories
+        id: changed
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.sha || github.event.before }}"
+          HEAD_REF="${{ github.sha }}"
+
+          CHANGED_FILES=$(git diff --name-only "$BASE_REF" "$HEAD_REF")
+
+          # If the shared module changed, every team is potentially affected -
+          # fall back to planning/applying all of them rather than none.
+          if echo "$CHANGED_FILES" | grep -q '^modules/'; then
+            TEAMS=$(ls -d teams/*/ | xargs -n1 basename | jq -R . | jq -s -c .)
+            echo "module_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            TEAMS=$(echo "$CHANGED_FILES" \
+              | grep '^teams/' \
+              | cut -d/ -f2 \
+              | sort -u \
+              | jq -R . | jq -s -c .)
+            echo "module_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "teams=$TEAMS" >> "$GITHUB_OUTPUT"
+          echo "Changed teams: $TEAMS"
+
+  plan:
+    if: github.event_name == 'pull_request' && needs.detect-changed-teams.outputs.teams != '[]'
+    needs: detect-changed-teams
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        team: ${{ fromJson(needs.detect-changed-teams.outputs.teams) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PLATFORM_CI_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: terraform init
+        working-directory: teams/${{ matrix.team }}
+        run: terraform init -input=false
+
+      - name: terraform validate
+        working-directory: teams/${{ matrix.team }}
+        run: terraform validate
+
+      - name: terraform plan
+        working-directory: teams/${{ matrix.team }}
+        run: terraform plan -input=false -no-color
+
+  apply:
+    if: github.event_name == 'push' && needs.detect-changed-teams.outputs.teams != '[]'
+    needs: detect-changed-teams
+    runs-on: ubuntu-latest
+    environment: production # gate with required reviewers in repo settings
+    strategy:
+      matrix:
+        team: ${{ fromJson(needs.detect-changed-teams.outputs.teams) }}
+      max-parallel: 5 # avoid hammering the shared DynamoDB lock table / API rate limits at 300-team scale
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PLATFORM_CI_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: terraform init
+        working-directory: teams/${{ matrix.team }}
+        run: terraform init -input=false
+
+      - name: terraform apply
+        working-directory: teams/${{ matrix.team }}
+        run: terraform apply -input=false -auto-approve
+
+  module-tests:
+    # Runs on every PR regardless of which team changed - the mocked-provider
+    # test suite is cheap and catches module regressions before any team's
+    # plan even runs.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+      - name: terraform test (mocked provider, no AWS needed)
+        working-directory: tests/team-baseline
+        run: |
+          terraform init -input=false
+          terraform test

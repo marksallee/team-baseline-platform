@@ -1,0 +1,13 @@
+.terraform/
+# .terraform.lock.hcl intentionally NOT ignored - commit it for reproducible provider versions
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars.json
+.terraform.tfstate.lock.info
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.DS_Store
