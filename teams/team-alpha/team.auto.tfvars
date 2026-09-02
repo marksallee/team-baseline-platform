@@ -10,7 +10,7 @@ buckets = {
 # Who's allowed to assume team-alpha's IAM role. Replace with your real
 # account ID / CI role ARN before applying against a live AWS account.
 trusted_principal_arns = [
-  "arn:aws:iam::123456789012:root"
+  "arn:aws:iam::603685288055:root"
 ]
 
 cost_center = "eng-alpha"
