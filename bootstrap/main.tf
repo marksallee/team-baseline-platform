@@ -31,12 +31,12 @@ variable "region" {
 
 variable "state_bucket_name" {
   type    = string
-  default = "acme-fintech-tfstate"
+  default = "sallee-tfstate-603685288055"
 }
 
 variable "lock_table_name" {
   type    = string
-  default = "acme-fintech-tf-locks"
+  default = "sallee-tf-locks-603685288055"
 }
 
 resource "aws_s3_bucket" "tf_state" {

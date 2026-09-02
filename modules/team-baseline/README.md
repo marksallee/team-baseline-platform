@@ -9,7 +9,7 @@ call to this module from their own root config in `teams/<name>/`.
 ## Naming convention (enforced, not a suggestion)
 
 Buckets are always named `${company_prefix}-${team_name}-${bucket_key}`, e.g.
-`acme-fintech-alpha-uploads`. The team supplies `team_name` and the map keys
+`sallee-603685288055-alpha-uploads`. The team supplies `team_name` and the map keys
 under `buckets`; they never choose the full bucket name, so there's no way
 to collide with the convention or another team's namespace.
 

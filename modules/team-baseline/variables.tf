@@ -43,7 +43,7 @@ variable "buckets" {
 variable "company_prefix" {
   description = "Global naming prefix enforced across every team's buckets, keeps bucket names globally unique and identifiable as belonging to this org."
   type        = string
-  default     = "acme-fintech"
+  default     = "sallee-603685288055"
 }
 
 variable "trusted_principal_arns" {

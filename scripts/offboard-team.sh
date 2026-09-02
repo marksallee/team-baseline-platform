@@ -39,5 +39,5 @@ echo "Resources destroyed. Removing ${TEAM_DIR} and its state key..."
 rm -rf "$TEAM_DIR"
 
 echo "Done. Remember to also delete the now-empty state object at"
-echo "  s3://acme-fintech-tfstate/teams/${TEAM_NAME#team-}/terraform.tfstate"
+echo "  s3://sallee-tfstate-603685288055/teams/${TEAM_NAME#team-}/terraform.tfstate"
 echo "(terraform destroy empties it but doesn't remove the object itself)."

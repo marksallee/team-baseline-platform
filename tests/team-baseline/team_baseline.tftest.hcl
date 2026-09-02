@@ -95,7 +95,7 @@ run "bucket_naming_convention_is_enforced" {
   }
 
   assert {
-    condition     = aws_s3_bucket.this["uploads"].bucket == "acme-fintech-testteam-uploads"
+    condition     = aws_s3_bucket.this["uploads"].bucket == "sallee-603685288055-testteam-uploads"
     error_message = "Bucket name must follow <prefix>-<team>-<key> convention"
   }
 }
@@ -115,12 +115,12 @@ run "iam_role_policy_only_references_this_teams_buckets" {
   }
 
   assert {
-    condition     = strcontains(aws_iam_role_policy.team_bucket_access.policy, "acme-fintech-testteam-uploads")
+    condition     = strcontains(aws_iam_role_policy.team_bucket_access.policy, "sallee-603685288055-testteam-uploads")
     error_message = "Team's IAM policy must reference its own uploads bucket"
   }
 
   assert {
-    condition     = strcontains(aws_iam_role_policy.team_bucket_access.policy, "acme-fintech-testteam-exports")
+    condition     = strcontains(aws_iam_role_policy.team_bucket_access.policy, "sallee-603685288055-testteam-exports")
     error_message = "Team's IAM policy must reference its own exports bucket"
   }
 }

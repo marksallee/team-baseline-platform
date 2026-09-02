@@ -94,10 +94,10 @@ EOF
 cat > "${TEAM_DIR}/backend.tf" <<EOF
 terraform {
   backend "s3" {
-    bucket         = "acme-fintech-tfstate"
+    bucket         = "sallee-tfstate-603685288055"
     key            = "teams/${SHORT_NAME}/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "acme-fintech-tf-locks"
+    dynamodb_table = "sallee-tf-locks-603685288055"
     encrypt        = true
   }
 }
