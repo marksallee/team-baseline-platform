@@ -11,7 +11,7 @@ variable "team_name" {
 variable "buckets" {
   description = <<-EOT
     Map of bucket short-name => config. The bucket short-name becomes part of
-    the enforced naming convention: "${company_prefix}-${team_name}-${key}".
+    the enforced naming convention: "$${company_prefix}-$${team_name}-$${key}".
     visibility has NO default on purpose - every bucket must explicitly state
     "public" or "private" so a team can never accidentally get a public
     bucket by omission.
