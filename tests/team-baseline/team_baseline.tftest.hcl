@@ -55,13 +55,25 @@ run "public_bucket_relaxes_block_and_gets_read_only_policy" {
     source = "../../modules/team-baseline"
   }
 
+  # aws_s3_bucket.arn is a computed attribute AWS normally generates - under
+  # a full mock_provider it's just an auto-generated placeholder that stays
+  # unknown until apply. The bucket policy's `policy` attribute is built
+  # from that arn, so it's unknown too unless we pin it here.
+  override_resource {
+    target          = aws_s3_bucket.this["assets"]
+    override_during = plan
+    values = {
+      arn = "arn:aws:s3:::sallee-603685288055-testteam-assets"
+    }
+  }
+
   assert {
     condition     = aws_s3_bucket_public_access_block.this["assets"].block_public_policy == false
     error_message = "Public bucket must relax block_public_policy"
   }
 
   assert {
-    condition     = can(aws_s3_bucket_policy.public_read["assets"])
+    condition     = length([for k, v in aws_s3_bucket_policy.public_read : k]) == 1
     error_message = "Public bucket must get a bucket policy"
   }
 
@@ -112,6 +124,26 @@ run "iam_role_policy_only_references_this_teams_buckets" {
 
   module {
     source = "../../modules/team-baseline"
+  }
+
+  # aws_s3_bucket.arn is a computed attribute AWS normally generates - under
+  # a full mock_provider it's just an auto-generated placeholder, not derived
+  # from our config. Pin it explicitly here so the IAM-policy-content
+  # assertion below has something real to check against.
+  override_resource {
+    target          = aws_s3_bucket.this["uploads"]
+    override_during = plan
+    values = {
+      arn = "arn:aws:s3:::sallee-603685288055-testteam-uploads"
+    }
+  }
+
+  override_resource {
+    target          = aws_s3_bucket.this["exports"]
+    override_during = plan
+    values = {
+      arn = "arn:aws:s3:::sallee-603685288055-testteam-exports"
+    }
   }
 
   assert {

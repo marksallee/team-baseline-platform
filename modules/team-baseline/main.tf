@@ -82,45 +82,53 @@ resource "aws_s3_bucket_policy" "public_read" {
 # IAM role - one per team, trust policy scoped to explicitly supplied
 # principals only, permissions built FROM the buckets this module just
 # created (never a wildcard, never a naming-convention guess).
+#
+# Built via jsonencode() locals rather than the aws_iam_policy_document
+# data source on purpose: that data source is provider-backed, so under
+# terraform test's mock_provider it gets blanked out along with real AWS
+# resources, breaking assertions on the actual policy content. jsonencode()
+# is a core Terraform language function - it always computes for real,
+# mocked provider or not - which keeps this module testable without AWS.
 # ---------------------------------------------------------------------------
 
-data "aws_iam_policy_document" "assume" {
-  statement {
-    sid     = "AllowTrustedPrincipalsToAssume"
-    effect  = "Allow"
-    actions = ["sts:AssumeRole"]
+locals {
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowTrustedPrincipalsToAssume"
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
+      Principal = { AWS = var.trusted_principal_arns }
+    }]
+  })
 
-    principals {
-      type        = "AWS"
-      identifiers = var.trusted_principal_arns
-    }
-  }
+  bucket_access_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "ListOwnBucketsOnly"
+        Effect    = "Allow"
+        Action    = ["s3:ListBucket"]
+        Resource  = [for b in aws_s3_bucket.this : b.arn]
+      },
+      {
+        Sid       = "ReadWriteOwnBucketObjectsOnly"
+        Effect    = "Allow"
+        Action    = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource  = [for b in aws_s3_bucket.this : "${b.arn}/*"]
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role" "team" {
   name               = "${var.team_name}-role"
-  assume_role_policy = data.aws_iam_policy_document.assume.json
+  assume_role_policy = local.assume_role_policy
   tags               = local.common_tags
-}
-
-data "aws_iam_policy_document" "bucket_access" {
-  statement {
-    sid       = "ListOwnBucketsOnly"
-    effect    = "Allow"
-    actions   = ["s3:ListBucket"]
-    resources = [for b in aws_s3_bucket.this : b.arn]
-  }
-
-  statement {
-    sid       = "ReadWriteOwnBucketObjectsOnly"
-    effect    = "Allow"
-    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-    resources = [for b in aws_s3_bucket.this : "${b.arn}/*"]
-  }
 }
 
 resource "aws_iam_role_policy" "team_bucket_access" {
   name   = "${var.team_name}-bucket-access"
   role   = aws_iam_role.team.id
-  policy = data.aws_iam_policy_document.bucket_access.json
+  policy = local.bucket_access_policy
 }
