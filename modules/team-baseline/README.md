@@ -43,7 +43,7 @@ module "baseline" {
 | `team_name` | string | yes | lowercase, 2-20 chars, `[a-z0-9-]` |
 | `buckets` | map(object({visibility=string})) | yes | at least 1 entry; visibility must be `"public"` or `"private"` explicitly - no default |
 | `trusted_principal_arns` | list(string) | yes | who can assume the team's role; no default on purpose |
-| `company_prefix` | string | no (default `sallee-fintech`) | global bucket-name prefix |
+| `company_prefix` | string | no (default `sallee-603685288055`) | global bucket-name prefix |
 | `tags` | map(string) | no | merged with module's own `Team`/`ManagedBy`/`Module` tags |
 
 ## Outputs
