@@ -21,7 +21,7 @@ scripts/new-team.sh      # scaffolds a new team directory
 
 ## Quick start (WSL / VS Code)
 
-You've already got Terraform installed under WSL from the Proxmox demo, so this
+I've already grown familiar with Terraform installed under WSL from the Proxmox demo, so this
 should be familiar — same binary, different provider.
 
 ```bash
@@ -72,7 +72,7 @@ terraform apply
 ```
 
 This creates the S3 bucket + DynamoDB lock table that every team's
-`backend.tf` points at. It's the one piece of chicken-and-egg infra that
+`backend.tf` points at. It's the one piece of infra that
 *isn't* self-service — it's created once, by the platform team, and almost
 never touched again.
 
