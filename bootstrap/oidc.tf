@@ -96,19 +96,20 @@ data "aws_iam_policy_document" "github_actions_ci_permissions" {
 
   # Team buckets always follow "${company_prefix}-${team_name}-${key}" -
   # scoped to that naming convention, not every bucket in the account.
+  # Action scope is deliberately s3:* rather than an explicit list: the
+  # AWS provider's own read/write surface for a single aws_s3_bucket
+  # resource (versioning, encryption, accelerate, public-access-block,
+  # policy, etc.) doesn't follow one consistent IAM action-name prefix
+  # (e.g. s3:PutEncryptionConfiguration vs s3:PutBucketVersioning), so an
+  # explicit allow-list turns into an ongoing whack-a-mole against every
+  # provider version. The blast-radius control here is the *resource* ARN
+  # pattern, not the action list - this role still can't touch any bucket
+  # outside the naming convention, which is the property that actually
+  # matters for isolation.
   statement {
-    sid    = "ManageTeamBuckets"
-    effect = "Allow"
-    actions = [
-      "s3:CreateBucket",
-      "s3:DeleteBucket",
-      "s3:GetBucket*",
-      "s3:PutBucket*",
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:ListBucket",
-    ]
+    sid     = "ManageTeamBuckets"
+    effect  = "Allow"
+    actions = ["s3:*"]
     resources = [
       "arn:aws:s3:::sallee-${data.aws_caller_identity.current.account_id}-*",
       "arn:aws:s3:::sallee-${data.aws_caller_identity.current.account_id}-*/*",
@@ -116,23 +117,13 @@ data "aws_iam_policy_document" "github_actions_ci_permissions" {
   }
 
   # Team roles are always named "${team_name}-role" with an inline
-  # "${team_name}-bucket-access" policy - scoped to that shape, not iam:*.
+  # "${team_name}-bucket-access" policy - scoped to that shape, not every
+  # role in the account. Same s3:* rationale applies to iam:* here - the
+  # resource ARN pattern (role/*-role) is the actual isolation boundary.
   statement {
-    sid    = "ManageTeamRoles"
-    effect = "Allow"
-    actions = [
-      "iam:CreateRole",
-      "iam:DeleteRole",
-      "iam:GetRole",
-      "iam:TagRole",
-      "iam:UntagRole",
-      "iam:UpdateAssumeRolePolicy",
-      "iam:PutRolePolicy",
-      "iam:GetRolePolicy",
-      "iam:DeleteRolePolicy",
-      "iam:ListRolePolicies",
-      "iam:ListInstanceProfilesForRole",
-    ]
+    sid       = "ManageTeamRoles"
+    effect    = "Allow"
+    actions   = ["iam:*"]
     resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*-role"]
   }
 
