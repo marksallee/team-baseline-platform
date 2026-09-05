@@ -82,6 +82,15 @@ bucket and lock table). A compromised or buggy workflow run can't reach
 outside what `modules/team-baseline` and `bootstrap/` are meant to manage -
 the CI identity is scoped the same way the module scopes each team's role.
 
+Within those two services the action scope is `s3:*`/`iam:*` rather than a
+curated allow-list - the AWS provider's own read/write surface for a single
+bucket or role (versioning, encryption, accelerate config, attached
+policies, etc.) doesn't follow one consistent IAM action-name prefix, so an
+explicit list turned into an ongoing whack-a-mole against real
+`AccessDenied` errors during testing. The *resource* ARN pattern is what
+actually enforces isolation here, not the action list - a deliberate
+trade-off between action-level and resource-level granularity.
+
 ## Testing
 `tests/team-baseline/team_baseline.tftest.hcl` uses Terraform's native test
 framework (1.6+) with `mock_provider "aws" {}` - every assertion runs against

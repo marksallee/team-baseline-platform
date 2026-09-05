@@ -63,11 +63,8 @@ in WSL: Ubuntu"), same as you'd have done for the Proxmox provider.
 
 ## AWS account setup
 
-1. New AWS account → choose the **Free Plan** at signup. You get $100 in
-   credits immediately, up to $100 more for completing onboarding tasks
-   (EC2, RDS, Lambda, Bedrock, setting a budget) — up to $200 total, valid
-   ~6 months. A card is still required even though nothing should get charged
-   at this scale.
+1. New AWS account, with programmatic access configured locally. A card is
+   required at signup even though nothing should get charged at this scale.
 2. **Set a budget alert immediately** — Billing console → Budgets → create a
    $5 and a $20 zero-based alert. This exercise costs pennies (a few S3
    buckets, some IAM, and Terraform state) as long as you remember to
