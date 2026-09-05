@@ -43,7 +43,11 @@ run "private_bucket_gets_full_public_access_block" {
 }
 
 run "public_bucket_relaxes_block_and_gets_read_only_policy" {
-  command = plan
+  # apply (not plan) so mock_provider fully resolves every computed
+  # attribute - under plan, aws_s3_bucket.arn (and anything derived from
+  # it, like the bucket policy JSON below) stays unknown, which the
+  # assertions below can't evaluate.
+  command = apply
 
   variables {
     buckets = {
@@ -55,13 +59,11 @@ run "public_bucket_relaxes_block_and_gets_read_only_policy" {
     source = "../../modules/team-baseline"
   }
 
-  # aws_s3_bucket.arn is a computed attribute AWS normally generates - under
-  # a full mock_provider it's just an auto-generated placeholder that stays
-  # unknown until apply. The bucket policy's `policy` attribute is built
-  # from that arn, so it's unknown too unless we pin it here.
+  # aws_s3_bucket.arn is a computed attribute AWS normally generates - pin
+  # it to something real-looking so the bucket policy's `policy` attribute
+  # (built from it) is deterministic and assertable.
   override_resource {
-    target          = aws_s3_bucket.this["assets"]
-    override_during = plan
+    target = aws_s3_bucket.this["assets"]
     values = {
       arn = "arn:aws:s3:::sallee-603685288055-testteam-assets"
     }
@@ -113,7 +115,8 @@ run "bucket_naming_convention_is_enforced" {
 }
 
 run "iam_role_policy_only_references_this_teams_buckets" {
-  command = plan
+  # apply (not plan) - see the comment in the public-bucket run above for why.
+  command = apply
 
   variables {
     buckets = {
@@ -131,16 +134,14 @@ run "iam_role_policy_only_references_this_teams_buckets" {
   # from our config. Pin it explicitly here so the IAM-policy-content
   # assertion below has something real to check against.
   override_resource {
-    target          = aws_s3_bucket.this["uploads"]
-    override_during = plan
+    target = aws_s3_bucket.this["uploads"]
     values = {
       arn = "arn:aws:s3:::sallee-603685288055-testteam-uploads"
     }
   }
 
   override_resource {
-    target          = aws_s3_bucket.this["exports"]
-    override_during = plan
+    target = aws_s3_bucket.this["exports"]
     values = {
       arn = "arn:aws:s3:::sallee-603685288055-testteam-exports"
     }

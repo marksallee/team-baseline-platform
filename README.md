@@ -8,6 +8,25 @@ Built as a take-home/interview design exercise. See `docs/DESIGN.md` for the
 write-up of the design decisions (state isolation, IAM scoping, CI/CD
 triggering, testing strategy, offboarding, tagging).
 
+## Requirements coverage
+
+| Requirement | Status | Where |
+|---|---|---|
+| ≥1 S3 bucket + 1 IAM role per team | ✅ | `modules/team-baseline/main.tf` |
+| Team declares bucket count + public/private per bucket | ✅ | `buckets` variable, no default on `visibility` |
+| Scales 1 → 300+ teams, zero platform code changes | ✅ | module invoked once per team; CI diffs `teams/**` |
+| Team owns its own declaration file | ✅ | `teams/<name>/team.auto.tfvars` |
+| Isolated Terraform state per team | ✅ | unique S3 backend `key` per team, shared bucket + lock table |
+| CI/CD triggers on a team's file changing | ✅ | `.github/workflows/team-pipeline.yml` |
+| Onboarding a team requires zero module changes | ✅ | `scripts/new-team.sh` only writes `teams/<name>/` |
+| Bucket visibility has no default | ✅ | validation rejects anything but literal `"public"`/`"private"` |
+| Role scoped to only that team's own buckets | ✅ | policy built from this invocation's `aws_s3_bucket.this`, not a wildcard |
+| Enforced bucket naming convention | ✅ | `${company_prefix}-${team_name}-${key}` |
+| Idempotent, safe to re-apply | ✅ | `docs/DESIGN.md` § Idempotency - no provisioners, deterministic names |
+| Tested without deploying to real AWS | ✅ | `tests/team-baseline/`, native `terraform test` + `mock_provider` |
+| Bonus: team offboarding | ✅ | `scripts/offboard-team.sh` |
+| Bonus: tagging for cost allocation/ownership | ✅ | `docs/DESIGN.md` § Tagging strategy |
+
 ## Repo layout
 
 ```

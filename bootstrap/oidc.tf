@@ -48,11 +48,19 @@ data "aws_iam_policy_document" "github_actions_assume" {
     }
 
     # Scoped to this one repo, any branch/PR/tag within it - not "any
-    # GitHub repo with this provider ARN in its account".
+    # GitHub repo with this provider ARN in its account". Matches both the
+    # classic "repo:owner/repo:*" subject format and GitHub's newer
+    # immutable-ID form "repo:owner@ownerid/repo@repoid:*" (confirmed via a
+    # debug workflow step that decoded a real token - this account's tokens
+    # use the ID-qualified form), so the trust relationship keeps working
+    # regardless of which one GitHub issues.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:*"]
+      values = [
+        "repo:${var.github_repo}:*",
+        "repo:${split("/", var.github_repo)[0]}@*/${split("/", var.github_repo)[1]}@*:*",
+      ]
     }
   }
 }

@@ -37,6 +37,16 @@ Two things make this scale-invariant:
   explicitly who can assume their role - visible in the PR diff, not
   buried in a module default.
 
+## Idempotency
+Every resource is a plain, declarative AWS resource tracked in Terraform
+state - there are no `null_resource`/`local-exec`/`external` provisioners
+anywhere in the module, which is the usual way idempotency quietly breaks
+(a shell script that appends to a file, calls an API that isn't safe to
+retry, etc.). Bucket and role names are derived deterministically from
+`team_name` and the `buckets` map keys - never `random_id`/`random_pet` or
+a timestamp - so re-running `terraform apply` against unchanged tfvars
+always plans zero changes rather than replacing resources on every run.
+
 ## State isolation
 Each team directory has its own `backend.tf` with a unique S3 key
 (`teams/<name>/terraform.tfstate`), sharing one bucket + DynamoDB lock
@@ -63,6 +73,14 @@ changed, every team is planned/applied, since a module change can affect
 all of them. `max-parallel` caps concurrent applies to avoid hammering the
 shared lock table at scale. Auth is via OIDC (`aws-actions/configure-aws-credentials`),
 no long-lived AWS keys in GitHub secrets.
+
+The role the pipeline assumes (`bootstrap/oidc.tf`) is itself least-privilege,
+not `AdministratorAccess` - its policy only grants S3/IAM/DynamoDB actions on
+resources matching this platform's own naming conventions (buckets prefixed
+`sallee-<account-id>-*`, roles matching `*-role`, plus the specific state
+bucket and lock table). A compromised or buggy workflow run can't reach
+outside what `modules/team-baseline` and `bootstrap/` are meant to manage -
+the CI identity is scoped the same way the module scopes each team's role.
 
 ## Testing
 `tests/team-baseline/team_baseline.tftest.hcl` uses Terraform's native test
