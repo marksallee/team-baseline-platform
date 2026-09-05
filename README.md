@@ -63,15 +63,13 @@ in WSL: Ubuntu"), same as you'd have done for the Proxmox provider.
 
 ## AWS account setup
 
-1. New AWS account, with programmatic access configured locally. A card is
-   required at signup even though nothing should get charged at this scale.
+1. New AWS account, with programmatic access configured locally.
 2. **Set a budget alert immediately** — Billing console → Budgets → create a
    $5 and a $20 zero-based alert. This exercise costs pennies (a few S3
    buckets, some IAM, and Terraform state) as long as you remember to
    `terraform destroy` after any live demo.
 3. Create an IAM user (not root) for yourself with programmatic access, or
-   better, set up `aws configure sso` if you want to practice the way a real
-   platform team would. For a quick demo, an IAM user with
+   better, set up `aws configure sso`. For a quick demo, an IAM user with
    `AdministratorAccess` scoped to this throwaway account is fine — just
    don't reuse that user/account for anything real.
 4. `aws configure` in WSL, or `aws configure sso` — either way, confirm with
@@ -99,7 +97,7 @@ cd tests/team-baseline
 terraform test
 ```
 
-This uses Terraform's native test framework with a **mocked provider** —
+This test uses Terraform's native test framework with a **mocked provider** —
 no real AWS calls, no cost, no credentials required. Good for CI on every PR
 and good to run before you even have an AWS account set up.
 
