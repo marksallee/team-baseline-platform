@@ -1,5 +1,8 @@
 # Owned by team-gamma. Fill this in, then open a PR.
 # CI will plan/apply only this directory.
+#
+# Onboarded via the self-service flow to verify the CI/CD pipeline
+# end-to-end (OIDC auth, per-team plan/apply, naming convention, tagging).
 
 buckets = {
   reports       = { visibility = "private" }
