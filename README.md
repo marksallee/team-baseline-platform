@@ -58,13 +58,13 @@ aws configure
 
 VS Code extensions worth having (if not already, from the Proxmox repo):
 `HashiCorp Terraform` (syntax + validate on save) and `AWS Toolkit` are both
-fine to install in the WSL remote window (Extensions pane → search → "Install
-in WSL: Ubuntu"), same as you'd have done for the Proxmox provider.
+installed in the WSL remote window (Extensions pane → search → "Install
+in WSL: Ubuntu"), similar to what I did with the Proxmox provider in a previous exercise.
 
 ## AWS account setup
 
 1. New AWS account, with programmatic access configured locally.
-2. **Set a budget alert immediately** — Billing console → Budgets → create a
+2. Set a budget alert - done — Billing console → Budgets → create a
    $5 and a $20 zero-based alert. This exercise costs pennies (a few S3
    buckets, some IAM, and Terraform state) as long as you remember to
    `terraform destroy` after any live demo.
