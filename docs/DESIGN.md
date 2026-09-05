@@ -1,5 +1,56 @@
 # Design write-up
 
+## Architecture at a glance
+
+One module, many isolated consumers, one shared backend, and a CI pipeline
+that dispatches off a diff rather than a static list:
+
+```mermaid
+flowchart LR
+    subgraph PLAT["Platform - owned once"]
+        MOD["modules/team-baseline"]
+        BOOT["bootstrap/<br/>state bucket - lock table<br/>OIDC provider - CI role"]
+    end
+
+    subgraph TEAMS["teams/&lt;name&gt;/ - self-service"]
+        A["team-alpha"]
+        B["team-beta"]
+        G["team-gamma"]
+    end
+
+    TEST["tests/team-baseline<br/>mock_provider suite"]
+
+    subgraph CI[".github/workflows/team-pipeline.yml"]
+        DETECT["detect-changed-teams<br/>git diff teams/**"]
+        PLAN["plan job (on PR)"]
+        APPLY["apply job (on push to main)"]
+    end
+
+    MOD -->|source =| A
+    MOD -->|source =| B
+    MOD -->|source =| G
+    MOD -.->|validated by| TEST
+
+    A -->|"backend key:<br/>teams/alpha/..."| BOOT
+    B -->|"backend key:<br/>teams/beta/..."| BOOT
+    G -->|"backend key:<br/>teams/gamma/..."| BOOT
+
+    G -->|PR touches only this dir| DETECT
+    DETECT -->|"teams = [gamma]"| PLAN
+    PLAN -->|merge to main| APPLY
+    BOOT -->|assume role via OIDC| PLAN
+    BOOT -->|assume role via OIDC| APPLY
+```
+
+A PR touching only `teams/team-gamma/` produces a diff of exactly one
+directory, so only `team-gamma`'s plan job runs - team-alpha and team-beta's
+state is never even opened. Two structural guarantees fall out of this
+shape: **zero-touch onboarding** (a new team is a new directory, never a
+module edit) and **blast-radius isolation** (a bad apply against one team's
+directory cannot reach another team's state file, because they're different
+S3 objects with independent DynamoDB locks - not a discipline anyone has to
+remember).
+
 ## Module design
 One reusable module, `modules/team-baseline`, takes `team_name`, `buckets`
 (map of short-name -> `{visibility}`), and `trusted_principal_arns`. It's
