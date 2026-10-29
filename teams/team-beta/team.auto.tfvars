@@ -9,7 +9,7 @@ buckets = {
 }
 
 trusted_principal_arns = [
-  "arn:aws:iam::123456789012:root"
+  "arn:aws:iam::603685288055:root"
 ]
 
 cost_center = "eng-beta"
