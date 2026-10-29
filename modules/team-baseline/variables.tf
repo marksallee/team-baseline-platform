@@ -53,7 +53,21 @@ variable "trusted_principal_arns" {
     module should never ship a role nobody can assume, but it also should
     never silently default to something overly permissive like account root.
   EOT
-  type = list(string)
+  type        = list(string)
+
+  validation {
+    condition = length(var.trusted_principal_arns) > 0 && alltrue([
+      for arn in var.trusted_principal_arns :
+      can(regex("^arn:aws:iam::[0-9]{12}:(root|role/.+|user/.+)$", arn))
+    ])
+    error_message = "Each trusted principal must be a specific IAM ARN (account root, role/..., or user/...) with a 12-digit account ID. Wildcards such as \"*\" would let any AWS account assume the role."
+  }
+}
+
+variable "permissions_boundary_name" {
+  description = "Name of the IAM managed policy (created in bootstrap/oidc.tf) attached as the permissions boundary of every team role."
+  type        = string
+  default     = "team-baseline-boundary"
 }
 
 variable "tags" {
