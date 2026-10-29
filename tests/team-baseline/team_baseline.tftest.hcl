@@ -6,10 +6,18 @@
 # anything for real. This is the "how do you validate without deploying"
 # answer for the module itself.
 
-mock_provider "aws" {}
+mock_provider "aws" {
+  # The provider validates the permissions-boundary ARN, so the mocked
+  # account ID has to look like a real 12-digit one.
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "603685288055"
+    }
+  }
+}
 
 variables {
-  team_name = "testteam"
+  team_name              = "testteam"
   trusted_principal_arns = ["arn:aws:iam::123456789012:role/testteam-ci"]
 }
 
@@ -37,8 +45,23 @@ run "private_bucket_gets_full_public_access_block" {
   }
 
   assert {
-    condition     = length([for k, v in aws_s3_bucket_policy.public_read : k]) == 0
-    error_message = "Private-only team should not create any public bucket policy"
+    condition     = aws_s3_bucket_public_access_block.this["data"].block_public_policy == true
+    error_message = "Private bucket must have block_public_policy = true"
+  }
+
+  assert {
+    condition     = aws_s3_bucket.this["data"].force_destroy == false
+    error_message = "Buckets must never be force_destroy"
+  }
+
+  assert {
+    condition     = aws_iam_role.team.path == "/team-baseline/"
+    error_message = "Team role must live under the /team-baseline/ path the CI role is scoped to"
+  }
+
+  assert {
+    condition     = endswith(aws_iam_role.team.permissions_boundary, ":policy/team-baseline-boundary")
+    error_message = "Team role must carry the team-baseline permissions boundary"
   }
 }
 
@@ -75,24 +98,48 @@ run "public_bucket_relaxes_block_and_gets_read_only_policy" {
   }
 
   assert {
-    condition     = length([for k, v in aws_s3_bucket_policy.public_read : k]) == 1
-    error_message = "Public bucket must get a bucket policy"
+    condition     = strcontains(aws_s3_bucket_policy.this["assets"].policy, "PublicReadOnlyGetObject")
+    error_message = "Public bucket must get the public read statement"
   }
 
   assert {
-    condition     = strcontains(aws_s3_bucket_policy.public_read["assets"].policy, "s3:GetObject")
+    condition     = strcontains(aws_s3_bucket_policy.this["assets"].policy, "aws:SecureTransport")
+    error_message = "Every bucket policy must deny insecure transport"
+  }
+
+  assert {
+    condition     = strcontains(aws_s3_bucket_policy.this["assets"].policy, "s3:GetObject")
     error_message = "Public bucket policy must grant GetObject"
   }
 
   assert {
-    condition     = !strcontains(aws_s3_bucket_policy.public_read["assets"].policy, "s3:PutObject")
+    condition     = !strcontains(aws_s3_bucket_policy.this["assets"].policy, "s3:PutObject")
     error_message = "Public bucket policy must NOT grant PutObject to the world"
   }
 
   assert {
-    condition     = !strcontains(aws_s3_bucket_policy.public_read["assets"].policy, "s3:DeleteObject")
+    condition     = !strcontains(aws_s3_bucket_policy.this["assets"].policy, "s3:DeleteObject")
     error_message = "Public bucket policy must NOT grant DeleteObject to the world"
   }
+}
+
+run "wildcard_trusted_principal_is_rejected" {
+  command = plan
+
+  variables {
+    trusted_principal_arns = ["*"]
+    buckets = {
+      data = { visibility = "private" }
+    }
+  }
+
+  module {
+    source = "../../modules/team-baseline"
+  }
+
+  expect_failures = [
+    var.trusted_principal_arns,
+  ]
 }
 
 run "bucket_naming_convention_is_enforced" {

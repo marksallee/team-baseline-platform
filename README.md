@@ -110,3 +110,8 @@ and good to run before you even have an AWS account set up.
 Scaffolds `teams/team-gamma/` from the template, wires up its own state key.
 Edit `teams/team-gamma/team.auto.tfvars`, open a PR — CI plans just that
 directory. See `docs/DESIGN.md` for the full flow.
+
+## Security
+See `docs/SECURITY.md`. After `bootstrap` apply, set the repo secrets
+`PLATFORM_PLAN_ROLE_ARN` and `PLATFORM_APPLY_ROLE_ARN` (replacing the old
+`PLATFORM_CI_ROLE_ARN`).

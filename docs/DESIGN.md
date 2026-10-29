@@ -125,22 +125,12 @@ all of them. `max-parallel` caps concurrent applies to avoid hammering the
 shared lock table at scale. Auth is via OIDC (`aws-actions/configure-aws-credentials`),
 no long-lived AWS keys in GitHub secrets.
 
-The role the pipeline assumes (`bootstrap/oidc.tf`) is itself least-privilege,
-not `AdministratorAccess` - its policy only grants S3/IAM/DynamoDB actions on
-resources matching this platform's own naming conventions (buckets prefixed
-`sallee-<account-id>-*`, roles matching `*-role`, plus the specific state
-bucket and lock table). A compromised or buggy workflow run can't reach
-outside what `modules/team-baseline` and `bootstrap/` are meant to manage -
-the CI identity is scoped the same way the module scopes each team's role.
-
-Within those two services the action scope is `s3:*`/`iam:*` rather than a
-curated allow-list - the AWS provider's own read/write surface for a single
-bucket or role (versioning, encryption, accelerate config, attached
-policies, etc.) doesn't follow one consistent IAM action-name prefix, so an
-explicit list turned into an ongoing whack-a-mole against real
-`AccessDenied` errors during testing. The *resource* ARN pattern is what
-actually enforces isolation here, not the action list - a deliberate
-trade-off between action-level and resource-level granularity.
+Auth uses two OIDC roles (`bootstrap/oidc.tf`): a read-only **plan** role
+trusted only for `pull_request` tokens, and an **apply** role trusted only
+for the `production` environment. Team roles live under the IAM path
+`/team-baseline/` with a permissions boundary, and CI's IAM/S3 actions are a
+curated list scoped to that path and the bucket naming convention - no
+`iam:*`/`s3:*`. See `docs/SECURITY.md` for the reasoning and rollout order.
 
 ## Testing
 `tests/team-baseline/team_baseline.tftest.hcl` uses Terraform's native test
